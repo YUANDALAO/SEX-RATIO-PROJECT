@@ -1,0 +1,69 @@
+install.packages('mediation')
+library("mediation")
+set.seed(2014)
+data("framing", package = "mediation")
+med.fit <- lm(emo ~ treat + age + educ + gender + income, data = framing)
+out.fit <- glm(cong_mesg ~ emo + treat + age + educ + gender + income,
+                  data = framing, family = binomial("probit"))
+med.out <- mediate(med.fit, out.fit, treat = "treat", mediator = "emo",
+                   robustSE = TRUE, sims = 100)
+summary(med.out)
+
+library(lme4)
+library(nlme)
+library(sjPlot)
+summary(fulldata$OSR_V)
+
+med.fit <- glm(OSR_V~freq.celibates+OffWristbandRef0+lac_period+age+BMI,family = 'poisson',data = fulldata)
+#control = glmerControl(optimizer = "bobyqa"),
+overdisp_fun <- function(model) {
+  rdf <- df.residual(model)
+  rp <- residuals(model,type="pearson")
+  Pearson.chisq <- sum(rp^2)
+  prat <- Pearson.chisq/rdf
+  pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
+  c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
+}
+
+overdisp_fun(med.fit) #lower than 1, so fine
+
+out.fit <- glm(steps~freq.celibates*OSR_V+OffWristbandRef0+lac_period+age+BMI,family = 'poisson',data = fulldata)
+med.out <- mediate(med.fit,out.fit,treat = 'freq.celibates',mediator = 'OSR_V',robustSE = TRUE,sims=100)
+
+summary(med.out)
+#The average causal mediation effects (ACME) ¯δ(t) and the average direct effects (ADE) ¯ζ(t), represent the population averages of these causal mediation and direct effects.
+med.out <- mediate(med.fit, out.fit, boot = TRUE, treat = "freq.celibates",
+                   mediator = "OSR_V", sims = 100)
+summary(med.out)
+
+test.TMint(med.out, conf.level = .95)
+fulldata$age <- as.factor(fulldata$age)
+summary(fulldata$age)
+
+plot(med.out)
+
+### GLMM mediation analysis
+fulldata <- within(fulldata,{
+  OSR <- NA
+  OSR[OSR_V>0.5] <- '1'
+  OSR[OSR_V<0.5] <- '0'
+})
+
+med.fit <- glm(factor(OSR)~freq.celibates,family = binomial(link = "logit"),data = fulldata)
+summary(med.fit)
+exp(-3.66)/(1+exp(-3.66))
+exp(0.73)/(1+exp(0.73))
+
+exp(coef(med.fit)[1]) /  (1+exp(coef(med.fit)[1]))
+# when x = 1
+exp(sum(coef(med.fit))) /  (1+exp(sum(coef(med.fit))))
+
+out.fit <- glmer(sqrt(steps)~OSR*Sex+scale(freq.celibates)*Sex+OffWristbandRef0+lac_period+age+BMI+(1|PVID),family = poisson(link = "log"),data = fulldata)
+plot_model(out.fit)
+summary(out.fit)
+out.fit1 <- lme(steps~OSR*Sex+scale(freq.celibates)*Sex+OffWristbandRef0+lac_period+age+BMI,random = ~1|PVID,na.action = na.pass,data = fulldata)
+summary(out.fit1)
+med.out <- mediate(med.fit,out.fit,treat = 'freq.celibates',mediator = 'OSR', robustSE = TRUE,sims=100)
+summary(med.out)
+  sens.out <- medsens(med.out, rho.by = 0.1, effect.type = "indirect", sims = 100)
+summary(sens.out)
