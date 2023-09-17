@@ -1,0 +1,256 @@
+#### 2022/03/07 ####
+####  YUAN CHEN ####
+#### ESTIMATE OSR ####
+############################# The relationship between sex ratio and steps by sex #############################
+################################################## Analysis IN GLMM.R ########################################
+####################################### GRAPH ################################################################
+library(ggplot2)
+library(ggthemes)
+fulldata$OSR_V <- 1-fulldata$AdultNoMonk
+ggplot(fulldata,aes(x=sex,y=predict^2,fill=sex))+facet_wrap(~OSR_V)+geom_boxplot()+
+  theme_base()+scale_fill_manual(values = c("#E64B35B2","#00A087B2"))+ylab('step counts taken per day')
+
+fulldata <- within(fulldata,{
+  Residence <- NA
+  Residence[Dispersal==1] <- 'Move in'
+  Residence[Dispersal==0] <- 'Natal'})
+
+fulldata$Ethnic <- factor(fulldata$Ethnic,levels = c("Amdo","Yi","Zhaba","mqAmdo","Han","Mosuo"),labels = c("zhAmdo","Yi","Zhaba","mqAmdo","Han","Mosuo"))
+
+
+#### GRAPH ####
+p2 <- ggplot(fulldata,aes(x=OSR_V,y=predict^2,color=Sex,fill=Sex))+
+  geom_point(aes(shape=`Residence pattern`),color='grey',size=2,alpha=0.5)+
+  geom_smooth(aes(fill=Sex,linetype=Sex,y=predict^2,method='loess'),span=1,alpha=0.1)+
+  facet_wrap(~Ethnic1)+
+  scale_shape_manual(values = c(1,2))+theme_few(base_size = 14)+
+  xlab("% reproductive males at each village")+
+  ylab("Adjusted daily steps taken")+
+  # scale_fill_manual(values = c("purple","green"))+  
+  #scale_color_manual(values = c("#00A087B2","#E64B35B2"))+
+  scale_fill_lancet()+scale_color_lancet()+scale_linetype_manual(values=c("twodash","solid"))+
+  theme(axis.title = element_text(size = 14),axis.text = element_text(size=9),
+        strip.text = element_text(size = 14))+
+  guides(color = guide_legend(order=1),
+         linetype=guide_legend(order=1),
+         shape = guide_legend(order=2),
+         fill=FALSE)
+p2
+ggsave('workload vary with Sex ratio_loess_span_1.tiff',width = 7.63,height = 6.33,dpi = 800)
+
+
+
+######################################## AFTER MODEL ############################################
+           ############################# Prediction 1 #################################
+
+## Male's workload change
+# male-biased
+mean(fulldata$prestep[which(fulldata$OSR_V>0.50 & fulldata$sex == 'Male')],na.rm=T)
+length(fulldata$prestep[which(fulldata$OSR_V>0.50 & fulldata$sex == 'Male')])
+sd(fulldata$prestep[which(fulldata$OSR_V>0.50 & fulldata$sex == 'Male')],na.rm=T)
+
+# female-biased
+mean(fulldata$prestep[which(fulldata$OSR_V<0.50 & fulldata$sex == 'Male')],na.rm=T)
+length(fulldata$prestep[which(fulldata$OSR_V<0.50 & fulldata$sex == 'Male')])
+sd(fulldata$prestep[which(fulldata$OSR_V<0.50 & fulldata$sex == 'Male')],na.rm=T)
+
+## Female's workload change
+# male-biased
+mean(fulldata$prestep[which(fulldata$OSR_V>0.50 & fulldata$sex == 'Female')],na.rm=T)
+length(fulldata$prestep[which(fulldata$OSR_V>0.50 & fulldata$sex == 'Female')])
+sd(fulldata$prestep[which(fulldata$OSR_V>0.50 & fulldata$sex == 'Female')],na.rm=T)
+
+# female-biased
+mean(fulldata$prestep[which(fulldata$OSR_V<0.50 & fulldata$sex == 'Female')],na.rm=T)
+length(fulldata$prestep[which(fulldata$OSR_V<0.50 & fulldata$sex == 'Female')])
+sd(fulldata$prestep[which(fulldata$OSR_V<0.50 & fulldata$sex == 'Female')],na.rm=T)
+
+
+fulldata <- within(fulldata,{
+  OSR <- NA
+  OSR[OSR_V>0.5] <- 'male_biased'
+  OSR[OSR_V<0.5] <- 'female_biased'
+})
+
+####  linear regression ####
+# normality test
+hist(fulldata$prestep)
+boxplot(fulldata$OSR_V~fulldata$sex)
+# independence test
+t.test(OSR_V~sex,data=fulldata)
+
+lm <- lm(prestep~sex*OSR,fulldata)
+summary(lm)
+
+lm <- lm(prestep~OSR,subset(fulldata,sex=='Female'))
+summary(lm)
+confint(lm)
+
+lm <- lm(prestep~OSR,subset(fulldata,sex=='Male'))
+summary(lm)
+confint(lm)
+
+aggregate(prestep~sex+OSR,fulldata,mean,na.rm=T)
+aggregate(prestep~sex,fulldata,sd,na.rm=T)
+
+aggregate(prestep~Ethnic*sex,fulldata,mean, na.rm=T)
+aggregate(prestep~Ethnic*sex,fulldata,sd, na.rm=T)
+
+
+
+
+######################## Result 2: % celibates of reproductive males #######################
+################ calculate the number of celibates reversely################################
+
+# m <- ASR_V1-OSR_V
+# N <- Mn+Fn
+# N. celibates = (m*(n)^2)/(Fn-m*n)
+
+m <- SEX.RATIO$OSR_V-SEX.RATIO$ASR_V1
+n <- SEX.RATIO$Fn+SEX.RATIO$Mn
+SEX.RATIO$no.celibates <- (m*(n)^2)/(SEX.RATIO$Fn-m*n)
+SEX.RATIO$freq.celibates <- SEX.RATIO$no.celibates/(SEX.RATIO$Mn+SEX.RATIO$no.celibates)
+fulldata$AdultNoMonk_digits3 <- round(fulldata$AdultNoMonk,digits = 3)
+fulldata$freq.celibates <- SEX.RATIO$freq.celibates[which(fulldata$AdultNoMonk_digits3==SEX.RATIO$OSR_V)]
+
+merge(fulldata,SEX.RATIO[,c("OSR_V","freq.celibates")],by.x = 'AdultNoMonk_digits3',by.y = 'OSR_V', freq.celibates,all.x = TRUE)
+
+#### examine the correlation between frequency of male celibates and men's workload. ####
+library(nlme)
+library(sjPlot)
+library(ggsci)
+colnames(fulldata)[33] <- 'freq.celibates'
+# m is bayesian approach
+n <- lme(steps~OffWristbandRef0+lac_period+relevel(factor(age),ref='60~')+BMI+freq.celibates*Sex,random=~1|Ethnic,method = 'ML',na.action = na.pass,data = fulldata)
+summary(n)
+intervals(n)
+plot_model(n,show.p =TRUE,
+           show.values = TRUE,dot.size = 2,value.size = 2,line.size = 1,value.offset = 0.4,
+           axis.labels = c("% male. celibate: Female","Female",'% male. celibates','BMI',
+                           "Age[50~60]","Age[40~50]",
+                           "Age[30~40]","Age[~30]","In lactation period",
+                           "Take off wristband"),
+           show.zeroinf = TRUE,ci.lvl = 0.95,title="",vline.color = "grey",
+           p.threshold = c(0.1,0.05, 0.01))+scale_color_lancet()+theme_bw()
+ggsave('forest_model_workload vary with celibates.tiff',width = 7.63,height = 6.33,dpi = 800)
+
+summary(sexratio$freq.celibates)
+fulldata$predict_c <- predict(n)
+summary(fulldata$predict_c)
+p1 <- ggplot(fulldata,aes(x=freq.celibates,y=predict_c))+
+  geom_point(size=1,alpha=0.2)+#color='grey')+
+  facet_wrap(~Sex)+
+  geom_smooth(aes(color=Ethnic,fill=Ethnic,y=predict_c),method = 'lm',alpha=0.1)+
+  theme_few(base_size = 14)+
+  xlab("Ratio of male celibates to male adults per village")+
+  ylab("Workload (Daily step counts)")+
+  #scale_shape_discrete(limits= c('Immigrant','Natal'),labels= c('People who moves in at marriage','Born in this family'))+
+  # scale_fill_manual(values = c("purple","green"))+  scale_color_manual(values = c("#00A087B2","#E64B35B2"))+
+  #scale_color_lancet()+scale_fill_lancet()+
+  scale_y_continuous(limit = c(5000, 20000))+
+  theme(axis.title = element_text(size = 12),axis.text = element_text(size=9),
+        strip.text = element_text(size = 13),
+        legend.position = c(0.90,0.89),legend.title = element_text(size=7),
+        legend.key.size = unit(0.2, 'mm'),legend.margin=unit(5,"cm"),
+        legend.spacing.y = unit(0.1, 'cm'),legend.text = element_text(size=7))+
+  guides(color = guide_legend(title = 'Ethnic group',order=1),
+         linetype= FALSE,fill=FALSE)
+p1
+ggsave('workload vary with celibates1.tiff',width = 4.62,height = 3.86,dpi = 800)
+
+## with ethnic as facet
+p1 <- ggplot(fulldata,aes(x=freq.celibates,y=predict_c,color=Sex,fill=Sex))+
+  geom_point(aes(shape=`Residence pattern`),size=1,alpha=0.2)+
+  geom_smooth(aes(fill=Sex,color=Ethnic1,linetype=Sex,y=predict_c),method = lm,alpha=0.05)+
+  facet_wrap(~Ethnic1)+
+  theme_few(base_size = 14)+
+  xlab("Frequency of celibate males per village")+
+  ylab("Adjusted daily steps taken")+
+  scale_fill_manual(values = c("#ED000099","#00467B99"))+ 
+  scale_color_manual(values = c("#ED000099","#00467B99"))+
+  # scale_fill_manual(values = c("purple","green"))+  scale_color_manual(values = c("#00A087B2","#E64B35B2"))+
+  #scale_color_lancet()+
+  scale_linetype_manual(values=c("solid","twodash"))+scale_y_continuous(limit = c(5000, 20000))+
+  theme(axis.title = element_text(size = 14),axis.text = element_text(size=9),
+        strip.text = element_text(size = 14))+
+  guides(color = guide_legend(order=1),
+         fill = guide_legend(order=2),
+         linetype= guide_legend(order=2))
+
+p1
+#### The gender inequality and sex ratio ####
+
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      sd = sd(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+fulldata$prestep <- (fulldata$predict)^2
+df2 <- data_summary(fulldata, varname="prestep",
+                    groupnames=c("sex",'OSR_V','Ethnic'))
+head(df2)
+
+######### FIGURE 4 #########
+ggplot(df2,aes(x=sex,y=prestep,color=sex))+geom_line(aes(color=sex))+
+  geom_point(size=4,position = position_dodge(0.6))+
+  geom_errorbar(aes(ymin=prestep-sd,ymax=prestep+sd),width=0.2,position=position_dodge(0.6))+facet_wrap(~OSR_V)+
+  theme_base()+ylab('step counts taken per day')
+
+fulldata$OSR_V <- round(1-fulldata$AdultNoMonk,digits = 2)
+hist(df2$prestep)
+lm <- lm(df2$prestep~df2$sex*df2$OSR_V)
+summary(lm)
+df3 <- reshape(df2, idvar = "OSR_V", timevar = "sex", direction = "wide")
+df3$step.gap <- df3$prestep.F-df3$prestep.M
+df3
+cor.test(df3$OSR_V,df3$step.gap)
+plot(df3$OSR_V,df3$step.gap,xlab='Operational sex ratio',ylab='Gender inequality',pch=18, col="blue")
+abline(lm(df3$step.gap~df3$OSR_V),pch=22, col="blue")
+#lines(df3$OSR_V,df3$step.gap,type="l", pch=22, col="blue", lty=2)
+text(df3$OSR_V,df3$step.gap, row.names(df3), cex=0.6, pos=4, col="red")
+
+a <- ggplot(df3[complete.cases(df3$step.gap),],aes(x=OSR_V,y=step.gap))+geom_point(aes(color=Ethnic.Male,size=prestep.Male))+theme_few()+ggtitle('Male')+theme(legend.position = 'none')
+b <- ggplot(df3[complete.cases(df3$step.gap),],aes(x=OSR_V,y=step.gap))+geom_point(aes(color=Ethnic.Female,size=prestep.Female))+theme_few()+ggtitle('Female')+theme(legend.position = 'none')
+ggarrange(a,b)
+
+mean(df3[1:10,6],na.rm = T)
+sd(df3[1:10,6],na.rm = T)
+
+mean(df3[11:19,6],na.rm = T)
+sd(df3[11:19,6],na.rm = T)
+
+ggsave('fig3.tiff',width = 6.95,height = 6.33,dpi=300)
+ggsave('fig3.tiff',dpi=300)
+
+####  throughout all villages (n=48)######
+lm <- lm(df2$prestep~df2$sex*df2$AdultNoMonk) #% of reproductive females
+summary(lm)
+df3 <- reshape(df2, idvar = "AdultNoMonk", timevar = "sex", direction = "wide")
+df3$step.gap <- df3$prestep.F-df3$prestep.M
+df3
+cor.test(df3$AdultNoMonk,df3$step.gap)
+
+tiff(file='gender inequality.tiff',width=5, height=5, units="in", res=100)
+plot(1-df3$AdultNoMonk,df3$step.gap,xlab='Operational sex ratio',ylab='Gender inequality (workload gap)',pch=18, col="#00467B99")
+df3$OSR_V <- 1-df3$AdultNoMonk
+abline(lm(df3$step.gap~df3$OSR_V),pch=38, col="#00467B99")
+#lines(df3$OSR_V,df3$step.gap,type="l", pch=22, col="blue", lty=2)
+text(df3$OSR_V,df3$step.gap, row.names(df3), cex=0.6, pos=4, col="red")
+legend("topright", inset=.05, title=NULL,
+       c('village code'), fill='#00467B99', horiz=TRUE)
+dev.off()
+
+mean(df3[1:10,6],na.rm = T)
+sd(df3[1:10,6],na.rm = T)
+
+mean(df3[11:19,6],na.rm = T)
+sd(df3[11:19,6],na.rm = T)
+
+ggsave('fig3.tiff',width = 6.95,height = 6.33,dpi=300)
+ggsave('fig3.tiff',dpi=300)
