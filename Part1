@@ -2,7 +2,7 @@
 ####  YUAN CHEN ####
 #### ESTIMATE OSR ####
 ############################# The relationship between sex ratio and steps by sex #############################
-################################################## Analysis IN GLMM.R ########################################
+################################################## Analysis 1 GLMM.R ########################################
 ####################################### GRAPH ################################################################
 library(ggplot2)
 library(ggthemes)
@@ -10,34 +10,8 @@ fulldata$OSR_V <- 1-fulldata$AdultNoMonk
 ggplot(fulldata,aes(x=sex,y=predict^2,fill=sex))+facet_wrap(~OSR_V)+geom_boxplot()+
   theme_base()+scale_fill_manual(values = c("#E64B35B2","#00A087B2"))+ylab('step counts taken per day')
 
-fulldata <- within(fulldata,{
-  Residence <- NA
-  Residence[Dispersal==1] <- 'Move in'
-  Residence[Dispersal==0] <- 'Natal'})
 
 fulldata$Ethnic <- factor(fulldata$Ethnic,levels = c("Amdo","Yi","Zhaba","mqAmdo","Han","Mosuo"),labels = c("zhAmdo","Yi","Zhaba","mqAmdo","Han","Mosuo"))
-
-
-#### GRAPH ####
-p2 <- ggplot(fulldata,aes(x=OSR_V,y=predict^2,color=Sex,fill=Sex))+
-  geom_point(aes(shape=`Residence pattern`),color='grey',size=2,alpha=0.5)+
-  geom_smooth(aes(fill=Sex,linetype=Sex,y=predict^2,method='loess'),span=1,alpha=0.1)+
-  facet_wrap(~Ethnic1)+
-  scale_shape_manual(values = c(1,2))+theme_few(base_size = 14)+
-  xlab("% reproductive males at each village")+
-  ylab("Adjusted daily steps taken")+
-  # scale_fill_manual(values = c("purple","green"))+  
-  #scale_color_manual(values = c("#00A087B2","#E64B35B2"))+
-  scale_fill_lancet()+scale_color_lancet()+scale_linetype_manual(values=c("twodash","solid"))+
-  theme(axis.title = element_text(size = 14),axis.text = element_text(size=9),
-        strip.text = element_text(size = 14))+
-  guides(color = guide_legend(order=1),
-         linetype=guide_legend(order=1),
-         shape = guide_legend(order=2),
-         fill=FALSE)
-p2
-ggsave('workload vary with Sex ratio_loess_span_1.tiff',width = 7.63,height = 6.33,dpi = 800)
-
 
 
 ######################################## AFTER MODEL ############################################
