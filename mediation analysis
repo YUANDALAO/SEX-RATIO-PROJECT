@@ -1,13 +1,6 @@
 install.packages('mediation')
 library("mediation")
 set.seed(2014)
-data("framing", package = "mediation")
-med.fit <- lm(emo ~ treat + age + educ + gender + income, data = framing)
-out.fit <- glm(cong_mesg ~ emo + treat + age + educ + gender + income,
-                  data = framing, family = binomial("probit"))
-med.out <- mediate(med.fit, out.fit, treat = "treat", mediator = "emo",
-                   robustSE = TRUE, sims = 100)
-summary(med.out)
 
 library(lme4)
 library(nlme)
