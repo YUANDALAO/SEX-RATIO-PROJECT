@@ -7,9 +7,6 @@
 library(ggplot2)
 library(ggthemes)
 fulldata$OSR_V <- 1-fulldata$AdultNoMonk
-ggplot(fulldata,aes(x=sex,y=predict^2,fill=sex))+facet_wrap(~OSR_V)+geom_boxplot()+
-  theme_base()+scale_fill_manual(values = c("#E64B35B2","#00A087B2"))+ylab('step counts taken per day')
-
 
 fulldata$Ethnic <- factor(fulldata$Ethnic,levels = c("Amdo","Yi","Zhaba","mqAmdo","Han","Mosuo"),labels = c("zhAmdo","Yi","Zhaba","mqAmdo","Han","Mosuo"))
 
