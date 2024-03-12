@@ -149,7 +149,9 @@ p1 <- ggplot(fulldata,aes(x=freq.celibates,y=predict_c,color=Sex,fill=Sex))+
          linetype= guide_legend(order=2))
 
 p1
-#### The gender inequality and sex ratio ####
+
+######################## Result 3: The gender inequality and sex ratio #######################
+
 
 data_summary <- function(data, varname, groupnames){
   require(plyr)
@@ -167,7 +169,7 @@ df2 <- data_summary(fulldata, varname="prestep",
                     groupnames=c("sex",'OSR_V','Ethnic'))
 head(df2)
 
-######### FIGURE 4 #########
+#### FIGUREs
 ggplot(df2,aes(x=sex,y=prestep,color=sex))+geom_line(aes(color=sex))+
   geom_point(size=4,position = position_dodge(0.6))+
   geom_errorbar(aes(ymin=prestep-sd,ymax=prestep+sd),width=0.2,position=position_dodge(0.6))+facet_wrap(~OSR_V)+
@@ -199,7 +201,7 @@ sd(df3[11:19,6],na.rm = T)
 ggsave('fig3.tiff',width = 6.95,height = 6.33,dpi=300)
 ggsave('fig3.tiff',dpi=300)
 
-####  throughout all villages (n=48)######
+####  throughout all available villages (n=48)######
 lm <- lm(df2$prestep~df2$sex*df2$AdultNoMonk) #% of reproductive females
 summary(lm)
 df3 <- reshape(df2, idvar = "AdultNoMonk", timevar = "sex", direction = "wide")
